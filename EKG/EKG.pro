@@ -14,6 +14,7 @@ include(QsLog/QsLog.pri)
 include(ECG_BASELINE/ecg_baseline.pri)
 include(ATRIAL_FIBR/atrial_fibr.pri)
 include(ST_INTERVAL/st_interval.pri)
+include(SIG_EDR/sig_edr.pri)
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
