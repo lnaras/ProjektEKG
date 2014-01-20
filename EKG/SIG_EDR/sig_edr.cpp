@@ -1,10 +1,13 @@
 #include "sig_edr.h"
-
+//konstruktor przypisuj¹cy otrzymane sygna³y EKG z dwoch elektrod
+//do odpowiednich pol w obiekcie
 sig_edr::sig_edr(const QVector<double> &signal_one,
                  const QVector<double> &signal_two
                 ): signal_one(signal_one), signal_two(signal_two)
 {}
 
+//konstruktor przypisuj¹cy otrzymane sygna³y EKG z dwoch elektrod
+//i iteratory R-pikow do odpowiednich pol w obiekcie
 sig_edr::sig_edr(const QVector<double> &signal_one,
                  const QVector<double>::const_iterator &RPeaksIterators_one,
                  const QVector<double> &signal_two,
@@ -44,6 +47,8 @@ sig_edr::sig_edr(const QVector<double> &signal_one,
     }
 }
 
+//konstruktor przypisuj¹cy otrzymane sygna³y EKG z dwoch elektrod,
+//iteratory QRSonset i QRSend do odpowiednich pol w obiekcie
 sig_edr::sig_edr(const QVector<double> &signal_one,
                  const QVector<double>::const_iterator &QRSonsetIterators_one,
                  const QVector<double>::const_iterator &QRSendIterators_one,
@@ -111,6 +116,8 @@ sig_edr::sig_edr(const QVector<double> &signal_one,
     calculate_signal_from_QRS(Integrals_one, Integrals_two);
 }
 
+//funkcja wczytujaca dane i obliczajaca sygnal EDR z wykorzystaniem modulu RPEAKS
+//przyjmuje numer sygnalu oraz iteratory kolejnych R-pikow w tym sygnale
 void sig_edr::new_RPeaks_signal(int signal_num ,
                                 const QVector<double>::const_iterator &RPeaksIterators
                                 )
@@ -118,16 +125,17 @@ void sig_edr::new_RPeaks_signal(int signal_num ,
     QVector<double>::const_iterator iterator;
     QVector<double>::const_iterator RPeaks  = RPeaksIterators;
 
-    signal_num %=2;
-    if(signal_num == 1)
+    signal_num %=2;//sprawdzamy ktory z sygnalow mamy do dyspozycji
+    if(signal_num == 1)//liczenie na podstawie pierwszego
     {
         iterator = signal_one.begin();
         EDRsignal_RPeaks_one.clear();
 
-        while(iterator != signal_one.end())
+        while(iterator != signal_one.end())//jezeli natrafimy na R-pik
         {
             if(iterator == RPeaks)
             {
+				//to zapisujemy wartosc tego R-piku
                 EDRsignal_RPeaks_one << *iterator;
                 RPeaks++;
             }
@@ -135,7 +143,7 @@ void sig_edr::new_RPeaks_signal(int signal_num ,
                 iterator++;
         }
     }
-    else
+    else//liczenie na podstawie drugiego - analogicznie jak pierwszego
     {
         iterator = signal_two.begin();
         EDRsignal_RPeaks_two.clear();
@@ -154,6 +162,8 @@ void sig_edr::new_RPeaks_signal(int signal_num ,
     }
 }
 
+//funkcja wczytujaca dane i obliczajaca sygnal EDR z wykorzystaniem modulu WAVES
+//przyjmuje iteratory kolejnych punktow QRSonset i QRSend z obu sygnalow
 void sig_edr::new_Waves_signal(const QVector<double>::const_iterator &QRSonsetIterators_one,
                                const QVector<double>::const_iterator &QRSendIterators_one,
                                const QVector<double>::const_iterator &QRSonsetIterators_two,
@@ -164,18 +174,20 @@ void sig_edr::new_Waves_signal(const QVector<double>::const_iterator &QRSonsetIt
     QVector<double>::const_iterator QRSonset    = QRSonsetIterators_one;
     QVector<double>::const_iterator QRSend      = QRSendIterators_one;
     QVector<double> QRS_Clas;
-
-    Integrals_one.clear();
+	
+	//przetwarzanie pierwszego sygnalu
+	
+    Integrals_one.clear();//czyszczenie starych sygnalow
     Integrals_two.clear();
     EDRsignal_Waves.clear();
 
-    while(iterator != signal_one.end())
+    while(iterator != signal_one.end())//przechodzimy przez caly sygnal EKG
     {
-        if(iterator == QRSonset)
+        if(iterator == QRSonset)//jezeli natrafimy na poczatek komlpeksu QRS
         {
-            while (iterator != QRSend)
+            while (iterator != QRSend)//to az do jego konca
             {
-                QRS_Clas << *iterator;
+                QRS_Clas << *iterator;//przepisujemy wartosci sygnalu do QRS_Clas
                 iterator++;
             }
             QRS_Clas << *iterator;
@@ -183,14 +195,18 @@ void sig_edr::new_Waves_signal(const QVector<double>::const_iterator &QRSonsetIt
             QRSonset++;
             QRSend++;
 
+			//liczymy calke z kompleksu QRS i zapisujemy jej wartosc do Integrals_one
             Integrals_one << integral(QRS_Clas);
             QRS_Clas.clear();
         }
-        else
+        else//jezeli nie natrafilismy na poczatek kompleksu QRS to idziemy dalej
         {
             iterator++;
         }
     }
+	
+	//przetwarzanie drugiego sygnalu
+	//analogiczne jak przetwarzanie pierwszego
 
     iterator    = signal_two.begin();
     QRSonset    = QRSonsetIterators_two;
@@ -218,9 +234,13 @@ void sig_edr::new_Waves_signal(const QVector<double>::const_iterator &QRSonsetIt
             iterator++;
         }
     }
+	//na koncu liczymy wartosci sygnalu EDR na podstawie
+	//obliczonych wartosci calek kompleksow QRS z obu sygnalow
     calculate_signal_from_QRS(Integrals_one, Integrals_two);
 }
 
+//funkcja zwracajaca sygnal EDR jako QVector
+//zarowno z jednej jak i z drugiej metody
 QVector<double>* sig_edr::retrieveEDR_QVec(int EDR_type, int signal_num
                                            )
 {
@@ -237,6 +257,8 @@ QVector<double>* sig_edr::retrieveEDR_QVec(int EDR_type, int signal_num
         return &EDRsignal_Waves;
 }
 
+//funkcja zwracajaca sygna³ EDR jako std::vector zamiast QVector
+//zarowno z jednej jak i z drugiej metody
 std::vector<double>* sig_edr::retrieveEDR_StdVec(int EDR_type, int signal_num
                                                  )
 {
@@ -255,6 +277,8 @@ std::vector<double>* sig_edr::retrieveEDR_StdVec(int EDR_type, int signal_num
     return &EDRsignal;
 }
 
+//funkcja obliczajaca pole powierzchni kompleksu QRS
+//czyli srednia wartosc sygnalu miedzy QRS_onset a QRS_end
 double sig_edr::integral(QVector<double> &value
                          )
 {
@@ -272,6 +296,8 @@ double sig_edr::integral(QVector<double> &value
     return sum;
 }
 
+//funkcja obliczajaca wartosc sygnalu oddechowego na podstawie
+//sygnalu EKG z dwoch elektrod - metoda wykorzystujaca modul WAVES
 void sig_edr::calculate_signal_from_QRS(const QVector<double> &QRSIntegrals_one,
                                         const QVector<double> &QRSIntegrals_two
                                         )
@@ -279,13 +305,13 @@ void sig_edr::calculate_signal_from_QRS(const QVector<double> &QRSIntegrals_one,
     QVector<double>::const_iterator iterator_one;
     QVector<double>::const_iterator iterator_two;
 
-    EDRsignal_Waves.clear();
+    EDRsignal_Waves.clear();//czyscimy stary sygnal
 
-    iterator_two = QRSIntegrals_two.begin();
+    iterator_two = QRSIntegrals_two.begin();//ustawiamy iteratory na poczatek sygnalu
 
     for(iterator_one = QRSIntegrals_one.begin(); iterator_one != QRSIntegrals_one.end(); iterator_one++)
     {
-        EDRsignal_Waves << atan(*iterator_one / *iterator_two);
-        iterator_two++;
+        EDRsignal_Waves << atan(*iterator_one / *iterator_two);//wartosc sygnalu EDR
+        iterator_two++;//inkrementacja obu iteratorow(drugi w petli)
     }
 }
